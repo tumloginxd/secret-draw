@@ -1,0 +1,17 @@
+{
+  "name": "secret-draw",
+  "version": "1.0.0",
+  "description": "Secret Santa draw app with Netlify Functions + Neon PostgreSQL",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.3",
+    "bcryptjs": "^2.4.3",
+    "nanoid": "^3.3.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

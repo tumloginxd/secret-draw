@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎁 Secret Draw — จับฉลากของขวัญ</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;900&family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="stars"></div>
+
+<div class="container" style="max-width:520px;">
+  <div class="header">
+    <span class="header-icon">🎁</span>
+    <h1>Secret Draw</h1>
+    <p>สร้างกิจกรรมจับฉลากของขวัญ แชร์ให้เพื่อน<br>แต่ละคนจับฉลากเองโดยไม่ต้องมาอยู่ด้วยกัน</p>
+  </div>
+
+  <div class="card">
+    <div class="section-title">✦ สร้างกิจกรรมใหม่</div>
+
+    <div class="field">
+      <label>ชื่อกิจกรรม <span class="required">*</span></label>
+      <input type="text" id="eventName" placeholder="เช่น Secret Santa ปีใหม่ 2568 🎄" maxlength="100" />
+    </div>
+
+    <div class="field">
+      <label>วันที่จัดกิจกรรม <span class="optional">(ไม่บังคับ)</span></label>
+      <input type="date" id="eventDate" />
+    </div>
+
+    <div class="field">
+      <label>รหัสผ่านสำหรับดูผลทั้งหมด <span class="optional">(ไม่บังคับ)</span></label>
+      <div class="input-with-icon">
+        <input type="password" id="eventPassword" placeholder="ถ้าไม่ตั้ง จะใช้ 'eiei' เป็นรหัสเริ่มต้น" maxlength="50" />
+        <button class="icon-btn" onclick="togglePassword('eventPassword', this)" title="แสดง/ซ่อนรหัสผ่าน">👁</button>
+      </div>
+      <div class="field-hint">รหัสผ่านนี้ใช้สำหรับดูผลการจับฉลากทั้งหมด และสุ่มใหม่</div>
+    </div>
+
+    <button class="btn btn-primary btn-full" id="createBtn" onclick="createEvent()">
+      <span>✨ สร้างกิจกรรม</span>
+    </button>
+
+    <div id="createError" class="error-msg" style="display:none;"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="section-title">🎉 กิจกรรมสร้างแล้ว!</div>
+    <div class="share-box">
+      <div class="share-label">ลิงก์แชร์ให้เพื่อน</div>
+      <div class="share-url-row">
+        <div class="share-url" id="shareUrl"></div>
+        <button class="btn btn-copy" id="copyBtn" onclick="copyLink()">คัดลอก</button>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" id="goBtn" onclick="goToEvent()">
+      → ไปที่หน้ากิจกรรม
+    </button>
+  </div>
+
+  <div class="footer-note">
+    <span>🔒 ผลการจับฉลากเก็บใน Database อย่างปลอดภัย</span>
+  </div>
+</div>
+
+<script>
+  const API = '/api';
+  let createdEventId = null;
+
+  async function createEvent() {
+    const name = document.getElementById('eventName').value.trim();
+    const eventDate = document.getElementById('eventDate').value;
+    const password = document.getElementById('eventPassword').value;
+
+    if (!name) {
+      showError('createError', 'กรุณาใส่ชื่อกิจกรรม');
+      document.getElementById('eventName').focus();
+      return;
+    }
+
+    const btn = document.getElementById('createBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> กำลังสร้าง...';
+    hideError('createError');
+
+    try {
+      const res = await fetch(`${API}/events-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, eventDate: eventDate || null, password: password || null })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      createdEventId = data.id;
+      const url = `${location.origin}/event/${data.id}`;
+      document.getElementById('shareUrl').textContent = url;
+      document.getElementById('resultCard').style.display = 'block';
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+      showError('createError', e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>✨ สร้างกิจกรรม</span>';
+    }
+  }
+
+  function copyLink() {
+    const url = document.getElementById('shareUrl').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ คัดลอกแล้ว';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'คัดลอก'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function goToEvent() {
+    window.location.href = `/event/${createdEventId}`;
+  }
+
+  function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+    else { input.type = 'password'; btn.textContent = '👁'; }
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  document.getElementById('eventName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') createEvent();
+  });
+</script>
+</body>
+</html>

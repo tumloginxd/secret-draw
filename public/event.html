@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎁 Secret Draw</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;900&family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="stars"></div>
+
+<div class="container" id="app">
+  <!-- Loading -->
+  <div id="viewLoading" class="center-view">
+    <div class="big-spinner"></div>
+    <p style="color:var(--muted); margin-top:1rem; font-family:'Sarabun';">กำลังโหลด...</p>
+  </div>
+
+  <!-- Not found -->
+  <div id="viewNotFound" class="center-view" style="display:none;">
+    <div style="font-size:4rem;">😢</div>
+    <h2 style="margin-top:1rem;">ไม่พบกิจกรรมนี้</h2>
+    <p style="color:var(--muted); font-family:'Sarabun'; margin-top:0.5rem;">ลิงก์อาจไม่ถูกต้อง หรือกิจกรรมถูกลบไปแล้ว</p>
+    <a href="/" class="btn btn-primary" style="margin-top:1.5rem; display:inline-flex;">← สร้างกิจกรรมใหม่</a>
+  </div>
+
+  <!-- Main Event View -->
+  <div id="viewMain" style="display:none;">
+    <div class="header">
+      <span class="header-icon">🎁</span>
+      <h1 id="eventTitle">—</h1>
+      <p id="eventMeta" style="color:var(--muted);"></p>
+    </div>
+
+    <!-- Phase: Joining (not locked) -->
+    <div id="phaseJoin" style="display:none;">
+      <div class="card">
+        <div class="section-title">👤 เข้าร่วมกิจกรรม</div>
+        <p class="phase-desc">กรอกชื่อของคุณเพื่อเข้าร่วมการจับฉลาก</p>
+        <div class="input-row">
+          <input type="text" id="joinName" placeholder="ชื่อของคุณ" maxlength="50" />
+          <button class="btn btn-primary" onclick="joinEvent()">เข้าร่วม</button>
+        </div>
+        <div id="joinError" class="error-msg" style="display:none;"></div>
+      </div>
+
+      <div class="card" id="participantListCard">
+        <div class="section-title-row">
+          <div class="section-title" style="margin-bottom:0;">👥 ผู้เข้าร่วม (<span id="participantCount">0</span> คน)</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadEvent()">↺ รีเฟรช</button>
+        </div>
+        <div class="participant-chips" id="participantChips">
+          <span class="empty-hint">ยังไม่มีผู้เข้าร่วม</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="organizer-zone">
+          <div class="organizer-label">🎯 สำหรับเจ้าของกิจกรรม</div>
+          <p style="font-size:0.85rem; color:var(--muted); font-family:'Sarabun'; margin-bottom:1rem;">
+            เมื่อทุกคนเข้าร่วมครบแล้ว กดปุ่มนี้เพื่อล็อกรายชื่อและเริ่มจับฉลาก
+          </p>
+          <button class="btn btn-accent btn-full" onclick="lockEvent()" id="lockBtn">
+            🔒 ล็อกรายชื่อ & เริ่มจับฉลาก
+          </button>
+          <div id="lockError" class="error-msg" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase: Drawing (locked) -->
+    <div id="phaseDraw" style="display:none;">
+      <div class="card">
+        <div class="section-title-row">
+          <div class="section-title" style="margin-bottom:0;">🎯 คลิกชื่อของคุณเพื่อจับฉลาก</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadEvent()">↺</button>
+        </div>
+        <p class="phase-desc">แต่ละคนกดที่ชื่อตัวเองเท่านั้น เฉพาะผู้กดจะเห็นผล</p>
+
+        <div class="status-bar">
+          <div class="status-item">
+            <div class="status-dot" style="background:var(--accent)"></div>
+            <span id="drawnCount" style="color:var(--text);font-weight:600;"></span>
+            <span style="color:var(--muted);">/ <span id="totalCount"></span> คนจับแล้ว</span>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="players-grid" id="playersGrid"></div>
+      </div>
+
+      <!-- Reveal Zone (show after all drawn) -->
+      <div class="card" id="revealZone" style="display:none;">
+        <div class="section-title">🔍 ดูผลการจับฉลากทั้งหมด</div>
+        <p class="phase-desc">ใส่รหัสผ่านเพื่อดูว่าใครได้ใครทั้งหมด</p>
+        <div class="input-row">
+          <input type="password" id="revealPassword" placeholder="รหัสผ่าน (ค่าเริ่มต้น: eiei)" />
+          <button class="btn btn-primary" onclick="revealAll()">ดูผล</button>
+        </div>
+        <div id="revealError" class="error-msg" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Share section -->
+    <div class="card share-section">
+      <div class="share-label">🔗 แชร์ลิงก์กิจกรรมนี้</div>
+      <div class="share-url-row">
+        <div class="share-url" id="currentUrl"></div>
+        <button class="btn btn-copy" onclick="copyCurrentLink()">คัดลอก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Draw Modal -->
+<div class="modal-overlay" id="drawModal">
+  <div class="modal">
+    <span class="modal-emoji" id="drawEmoji">🎉</span>
+    <div class="modal-greeting">สวัสดี,</div>
+    <div class="modal-drawer" id="drawDrawer">—</div>
+    <div class="modal-label">🎁 คุณได้ซื้อของให้</div>
+    <div class="modal-recipient" id="drawRecipient">—</div>
+    <div class="modal-sub">เก็บเป็นความลับไว้นะ! 🤫</div>
+    <button class="modal-close" onclick="closeDrawModal()">รับทราบแล้ว ปิดหน้าต่างนี้</button>
+  </div>
+</div>
+
+<!-- Reveal All Modal -->
+<div class="modal-overlay" id="revealModal">
+  <div class="modal modal-wide">
+    <div class="modal-emoji">📋</div>
+    <h3 style="margin-bottom:0.25rem;" id="revealEventName">—</h3>
+    <p style="font-size:0.85rem; color:var(--muted); font-family:'Sarabun'; margin-bottom:1.5rem;">ผลการจับฉลากทั้งหมด</p>
+    <div class="reveal-list" id="revealList"></div>
+    <div style="display:flex; gap:0.75rem; margin-top:1.5rem; flex-wrap:wrap;">
+      <button class="btn btn-danger" style="flex:1;" onclick="redrawAll()">↺ สุ่มใหม่ทั้งหมด</button>
+      <button class="modal-close" style="flex:1;" onclick="closeRevealModal()">ปิด</button>
+    </div>
+    <div id="redrawError" class="error-msg" style="display:none; margin-top:0.75rem;"></div>
+  </div>
+</div>
+
+<script>
+  const API = '/api';
+  const eventId = location.pathname.replace('/event/', '').replace(/\/$/, '');
+  let eventData = null;
+  let lastRevealPassword = '';
+  const COLORS = ['av1','av2','av3','av4','av5'];
+  const EMOJIS = ['🎁','🎊','🎉','✨','🎀','🌟','🥳'];
+
+  // ─── Load Event ───────────────────────────────────────
+  async function loadEvent() {
+    try {
+      const res = await fetch(`${API}/events-get?id=${eventId}`);
+      const data = await res.json();
+      if (!res.ok) { showView('viewNotFound'); return; }
+
+      eventData = data;
+      renderEvent();
+    } catch (e) {
+      showView('viewNotFound');
+    }
+  }
+
+  function renderEvent() {
+    const ev = eventData;
+    showView('viewMain');
+
+    document.title = `🎁 ${ev.name} — Secret Draw`;
+    document.getElementById('eventTitle').textContent = ev.name;
+
+    let meta = '';
+    if (ev.event_date) {
+      const d = new Date(ev.event_date);
+      meta = `📅 ${d.toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' })}`;
+    }
+    document.getElementById('eventMeta').textContent = meta;
+    document.getElementById('currentUrl').textContent = location.href;
+
+    if (ev.locked) {
+      document.getElementById('phaseJoin').style.display = 'none';
+      document.getElementById('phaseDraw').style.display = 'block';
+      renderDrawPhase();
+    } else {
+      document.getElementById('phaseJoin').style.display = 'block';
+      document.getElementById('phaseDraw').style.display = 'none';
+      renderJoinPhase();
+    }
+  }
+
+  function renderJoinPhase() {
+    const participants = eventData.participants || [];
+    document.getElementById('participantCount').textContent = participants.length;
+    const chips = document.getElementById('participantChips');
+    if (participants.length === 0) {
+      chips.innerHTML = '<span class="empty-hint">ยังไม่มีผู้เข้าร่วม — เชิญเพื่อนมาก่อนเลย!</span>';
+    } else {
+      chips.innerHTML = participants.map((p, i) =>
+        `<div class="chip" style="--ci:${i}"><span class="chip-dot ${COLORS[i%COLORS.length]}"></span>${p.name}</div>`
+      ).join('');
+    }
+  }
+
+  function renderDrawPhase() {
+    const participants = eventData.participants || [];
+    const drawn = participants.filter(p => p.has_drawn).length;
+    const total = participants.length;
+
+    document.getElementById('drawnCount').textContent = drawn;
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('progressFill').style.width = (total ? (drawn/total*100) : 0) + '%';
+
+    const grid = document.getElementById('playersGrid');
+    grid.innerHTML = participants.map((p, i) => {
+      const colorClass = COLORS[i % COLORS.length];
+      return `
+        <div class="player-card ${p.has_drawn ? 'drawn' : ''}" >
+          <div class="player-name">
+            <div class="avatar ${colorClass}">${p.name.charAt(0)}</div>
+            <span>${p.name}</span>
+          </div>
+          ${p.has_drawn
+            ? `<span class="drawn-label">✓ จับแล้ว</span>`
+            : `<button class="draw-btn-player" onclick="drawForPlayer('${p.name.replace(/'/g,"\\'")}', event)">จับ!</button>`
+          }
+        </div>`;
+    }).join('');
+
+    // Show reveal zone only when all drawn
+    const allDrawn = total > 0 && drawn === total;
+    document.getElementById('revealZone').style.display = allDrawn ? 'block' : 'none';
+  }
+
+  // ─── Join Event ───────────────────────────────────────
+  async function joinEvent() {
+    const name = document.getElementById('joinName').value.trim();
+    if (!name) { showError('joinError', 'กรุณาใส่ชื่อของคุณ'); return; }
+    hideError('joinError');
+
+    try {
+      const res = await fetch(`${API}/events-join`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, name })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError('joinError', data.error); return; }
+
+      document.getElementById('joinName').value = '';
+      await loadEvent();
+    } catch (e) {
+      showError('joinError', 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+    }
+  }
+
+  // ─── Lock Event ───────────────────────────────────────
+  async function lockEvent() {
+    const btn = document.getElementById('lockBtn');
+    const participants = eventData?.participants || [];
+    if (participants.length < 2) {
+      showError('lockError', 'ต้องมีผู้เข้าร่วมอย่างน้อย 2 คน');
+      return;
+    }
+    if (!confirm(`ล็อกรายชื่อ ${participants.length} คน และเริ่มจับฉลากเลยไหม?\nหลังจากนี้จะไม่สามารถเพิ่มชื่อได้แล้ว`)) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> กำลังสร้างฉลาก...';
+    hideError('lockError');
+
+    try {
+      const res = await fetch(`${API}/events-lock`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError('lockError', data.error); return; }
+      await loadEvent();
+    } catch (e) {
+      showError('lockError', 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🔒 ล็อกรายชื่อ & เริ่มจับฉลาก';
+    }
+  }
+
+  // ─── Draw ─────────────────────────────────────────────
+  async function drawForPlayer(name, e) {
+    try {
+      const res = await fetch(`${API}/events-draw`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, name })
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error); return; }
+
+      burst(e);
+      showDrawModal(name, data.recipient);
+      await loadEvent();
+    } catch (err) {
+      alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    }
+  }
+
+  function showDrawModal(drawer, recipient) {
+    document.getElementById('drawEmoji').textContent = EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+    document.getElementById('drawDrawer').textContent = drawer;
+    document.getElementById('drawRecipient').textContent = recipient;
+    document.getElementById('drawModal').classList.add('show');
+  }
+
+  function closeDrawModal() {
+    document.getElementById('drawModal').classList.remove('show');
+  }
+
+  // ─── Reveal All ───────────────────────────────────────
+  async function revealAll() {
+    const password = document.getElementById('revealPassword').value;
+    hideError('revealError');
+
+    try {
+      const res = await fetch(`${API}/events-reveal`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, password })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError('revealError', data.error); return; }
+
+      lastRevealPassword = password;
+      document.getElementById('revealEventName').textContent = data.eventName;
+      const list = document.getElementById('revealList');
+      list.innerHTML = data.assignments.map((a, i) => `
+        <div class="reveal-row">
+          <div class="reveal-from">${a.drawer}</div>
+          <div class="reveal-arrow">→</div>
+          <div class="reveal-to">🎁 ${a.recipient}</div>
+          <div class="reveal-status">${a.hasDrawn ? '✓' : '⏳'}</div>
+        </div>
+      `).join('');
+      document.getElementById('revealModal').classList.add('show');
+    } catch (e) {
+      showError('revealError', 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+    }
+  }
+
+  function closeRevealModal() {
+    document.getElementById('revealModal').classList.remove('show');
+    hideError('redrawError');
+  }
+
+  // ─── Redraw All ───────────────────────────────────────
+  async function redrawAll() {
+    if (!confirm('สุ่มใหม่ทั้งหมดเลยไหม? ผลเดิมจะถูกลบ และทุกคนต้องจับใหม่')) return;
+    hideError('redrawError');
+
+    try {
+      const res = await fetch(`${API}/events-redraw`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, password: lastRevealPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError('redrawError', data.error); return; }
+
+      closeRevealModal();
+      await loadEvent();
+    } catch (e) {
+      showError('redrawError', 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+    }
+  }
+
+  // ─── Helpers ──────────────────────────────────────────
+  function showView(id) {
+    ['viewLoading','viewNotFound','viewMain'].forEach(v => {
+      document.getElementById(v).style.display = v === id ? (id === 'viewMain' ? 'block' : 'flex') : 'none';
+    });
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+
+  function copyCurrentLink() {
+    navigator.clipboard.writeText(location.href);
+  }
+
+  function burst(e) {
+    const x = e?.clientX ?? window.innerWidth/2;
+    const y = e?.clientY ?? window.innerHeight/2;
+    const colors = ['#e8b84b','#ff6b6b','#6bcbff','#fff','#6bffa5'];
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const angle = (i / 18) * 360;
+      const dist = 60 + Math.random() * 70;
+      const tx = Math.cos(angle * Math.PI/180) * dist;
+      const ty = Math.sin(angle * Math.PI/180) * dist;
+      p.style.cssText = `left:${x}px;top:${y}px;background:${colors[i%colors.length]};--tx:${tx}px;--ty:${ty}px;`;
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 900);
+    }
+  }
+
+  document.getElementById('joinName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') joinEvent();
+  });
+  document.getElementById('drawModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDrawModal();
+  });
+  document.getElementById('revealModal').addEventListener('click', function(e) {
+    if (e.target === this) closeRevealModal();
+  });
+  document.getElementById('revealPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') revealAll();
+  });
+
+  // Init
+  showView('viewLoading');
+  loadEvent();
+</script>
+</body>
+</html>
